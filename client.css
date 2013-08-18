@@ -1,0 +1,37 @@
+html, body, .term {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.term {
+    width: 100%;
+    font-size: 120%;
+    font-family: monospace;
+}
+
+.term { color: #aaa; }
+.term .bright { color: #ddd; }
+.term .dim { color: #777; }
+.term .fg-black { color: #000; }
+.term .fg-black.bright { color: #333; }
+.term .fg-red { color: #a00; }
+.term .fg-red.bright { color: #d00; }
+.term .fg-red.dim { color: #700; }
+.term .fg-green { color: #0a0; }
+.term .fg-green.bright { color: #0d0; }
+.term .fg-green.dim { color: #070; }
+.term .fg-yellow { color: #aa0; }
+.term .fg-yellow.bright { color: #dd0; }
+.term .fg-yellow.dim { color: #770; }
+.term .fg-blue { color: #00b; }
+.term .fg-blue.bright { color: #00f; }
+.term .fg-blue.dim { color: #007; }
+.term .fg-magenta { color: #a0a; }
+.term .fg-magenta.bright { color: #d0d; }
+.term .fg-magenta.dim { color: #707; }
+.term .fg-cyan { color: #0aa; }
+.term .fg-cyan.bright { color: #0dd; }
+.term .fg-cyan.dim { color: #077; }
+
+.term { background-color: #000; }
