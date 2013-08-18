@@ -1,14 +1,21 @@
-html, body, .term {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
+html, body, .term { margin: 0; padding: 0; }
+html, body { height: 100%; }
 
 .term {
     width: 100%;
+    min-height: 100%;
     font-size: 120%;
     font-family: monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
+
+.term .cursor {
+    position: absolute;
+    background-color: #fff;
+    opacity: 0.5;
+}
+.term .cursor.hidden { visibility: hidden }
 
 .term { color: #aaa; }
 .term .bright { color: #ddd; }

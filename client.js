@@ -47,6 +47,7 @@
         CHAR_CODE_0 = String.charCodeAt("0"),
         CHAR_CODE_9 = String.charCodeAt("9"),
         CHAR_CODE_COLON = String.charCodeAt(";"),
+        CHAR_CODE_BACK_SPACE = 8,
 
         DISPLAY_BRIGHT_CLS = "bright",
         DISPLAY_DIM_CLS = "dim",
@@ -77,9 +78,17 @@
     function Term(id) {
         var me = this,
             el = doc.getElementById(id),
+
             handlers = {},
-            activeTextNode;
-        
+            lineHeight = 16, // This will get overriden on cursor creation ot more accurate values
+            colWidth = 9,    //
+            cursorRange = doc.createRange(),
+            cursorEl,
+            activeTextNode,
+            activeOffset;    // Offset in 
+
+        // Event handlers
+        // --------------
         function onKeyPress(event) {
             var char = event.char || String.fromCharCode(event.charCode);
 
@@ -104,6 +113,13 @@
             }
         }
 
+        function onResize(event) {
+            console.log('Element was resized');
+        }
+
+        // Private methods
+        // ---------------
+
         function emit(type, event) {
             var fns = handlers[type],
                 i, l = fns ? fns.length : 0;
@@ -114,21 +130,120 @@
             }
         }
 
-        function addEventListener(name, cb) {
+        /**
+         * Process escape sequence from chunk at given index
+         * @private
+         * @param {String} chunk Text chunk
+         * @param {Number} index Index, where escape sequence starts, after esc char
+         * @return {Number} Index of first character after esc sequence
+         */
+        function processEscSequence(chunk, start) {
+            var i = start, 
+                l = chunk.length,
+                charCode = String.charCodeAt(chunk[i]);
+
+            if (charCode == ESC_SEQ_EXT_CHAR_CODE) {
+                do {
+                    charCode = String.charCodeAt(chunk[++i]);
+                } while ((charCode >= CHAR_CODE_0 && charCode <= CHAR_CODE_9) || charCode == CHAR_CODE_COLON);
+            }
+
+            // TODO: implement remainig commads
+            switch(charCode) {
+            case ESC_SEQ_DISP_CHAR_CODE:
+                setDisplay(chunk.slice(start + 1, i).split(';'));
+                break;
+            default:
+                console.warn('Recived unknown escape sequence: ', chunk.slice(start, i + 1));
+            }
+            return (i + 1);
+        }
+
+        function pushChunk(chunk, from, to) {
+            activeTextNode.data += chunk.slice(from, to);
+            activeOffset = activeTextNode.data.length;
+        }
+
+        // Call this every time activeTextNode or activeOffset is changed
+        // to update visual curor range
+        function updateCursor() {
+            var offset = activeOffset,
+                rect;
+
+            cursorRange.setStart(activeTextNode, offset);
+            if (offset < activeTextNode.data.length) {
+                offset += 1;
+            }
+            cursorRange.setEnd(activeTextNode, activeOffset);
+            rect = cursorRange.getBoundingClientRect();
+            cursorEl.style.top = rect.top + 'px';
+            cursorEl.style.left = rect.left + 'px';
+        }
+
+        // Public terminal commands
+        // ------------------------
+
+        /**
+         * Attach event listener
+         *
+         * @parm {String} name The event name
+         * @param {Function} handler The event handler
+         */
+        function addEventListener(name, handler) {
             if (!handlers[name]) {
                 handlers[name] = [];
             }
-            handlers[name].push(cb);
+            handlers[name].push(handler);
         }
 
+        /**
+         * Clear terminal content
+         *
+         * @return {Terminal} Terminal object for chaining
+         */
         function clear() {
-            this.el.innerHTML = '';
+            el.innerHTML = '';
+            el.appendChild(cursorEl);
+            return me;
+        }
+
+        /**
+         * Print chunk of data to terminal, with processing escape sequences
+         *
+         * @return {Terminal} Terminal object for chaining
+         */
+        function print(chunk) {
+            var printedI = 0,
+                i = 0,
+                l = chunk.length;
+
+            for (; i < l; i++) {
+                if (chunk[i] === ESC_SEQ_START) {
+                    pushChunk(chunk, printedI, i);
+                    // TOOD: what ebout escape sequences, which goes beyond one chunk
+                    printedI = processEscSequence(chunk, i + 1);
+                    i = printedI - 1;
+                } else if (chunk[i] === '\b') {
+                    pushChunk(chunk, printedI, i);
+                    deleteBackwardChar();
+                    printedI = i + 1;
+                }
+            }
+            pushChunk(chunk, printedI, i);
+
+            // Make sure terminal is scrolled to bottom on any entry
+            // TODO: maybe scrolling shoul be combined with cursor move
+            doc.documentElement.scrollTop = el.offsetHeight - doc.offsetHeight;
+
+            updateCursor();
+            return me;
         }
 
         /**
          * Set display attributes
          *
          * @param {String} attr Display attribute, beeing one of
+         * @return {Terminal} Terminal object for chaining
          */
         function setDisplay(attrs){
             var span,
@@ -177,72 +292,75 @@
                 }
                 span.classList.add(cls);
             }
+            return me;
         }
 
         /**
-         * Process escape sequence from chunk at given index
-         * @private
-         * @param {String} chunk Text chunk
-         * @param {Number} index Index, where escape sequence starts, after esc char
-         * @return {Number} Index of first character after esc sequence
+         * Hide cursor
+         *
+         * @return {Terminal} Terminal object for chaining
          */
-        function processEscSequence(chunk, start) {
-            var i = start, 
-                l = chunk.length,
-                charCode = String.charCodeAt(chunk[i]);
-
-            if (charCode == ESC_SEQ_EXT_CHAR_CODE) {
-                do {
-                    charCode = String.charCodeAt(chunk[++i]);
-                } while ((charCode >= CHAR_CODE_0 && charCode <= CHAR_CODE_9) || charCode == CHAR_CODE_COLON);
-            }
-
-            // TODO: implement remainig commads
-            switch(charCode) {
-            case ESC_SEQ_DISP_CHAR_CODE:
-                setDisplay(chunk.slice(start + 1, i).split(';'));
-                break;
-            default:
-                console.warn('Recived unknown escape sequence: ', chunk.slice(start, i + 1));
-            }
-            return (i + 1);
-        }
-
-        function pushChunk(chunk, from, to) {
-            activeTextNode.data += chunk.slice(from, to);
+        function hideCursor() {
+            cursorEl.classList.add('hidden');
+            return me;
         }
 
         /**
-         * Print chunk of data to terminal, with processing escape sequences
+         * Show cursor
+         *
+         * @return {Terminal} Terminal object for chaining
          */
-        function print(chunk) {
-            var printedI = 0,
-                i = 0,
-                l = chunk.length;
-
-            for (; i < l; i++) {
-                if (chunk[i] === ESC_SEQ_START) {
-                    pushChunk(chunk, printedI, i);
-                    // TOOD: what ebout escape sequences, which goes beyond one chunk
-                    printedI = processEscSequence(chunk, i + 1);
-                    i = printedI - 1;
-                }
-            }
-            pushChunk(chunk, printedI, i);
+        function showCursor() {
+            cursorEl.classList.remove('hidden');
+            return me;
         }
 
+        /**
+         * Return number of colums and lines of terminal
+         *
+         * @returns {Number[]} Number of columns and lines in terminal
+         */
+        function getSize() {
+            return [
+                Math.floor(el.offsetWidth / colWidth),
+                Math.floor(window.innerHeight / lineHeight)
+            ];
+        }
+
+        function deleteBackwardChar() {
+            var chunk = activeTextNode.data;
+            activeTextNode.data = chunk.slice(0, chunk.length - 1);
+            activeOffset -= 1;
+            updateCursor();
+        }
+
+        // Bind event 
         el.addEventListener('keypress', onKeyPress);
+        el.addEventListener('resize', onResize);
+
+        // Set-up cursor
+        cursorEl = doc.createElement('span');
+        cursorEl.className = "cursor hidden";
+        cursorEl.innerHTML = "&nbsp;";
+        el.appendChild(cursorEl);
+        lineHeight = cursorEl.offsetHeight;
+        colWidth = cursorEl.offsetWidth;
+
         setDisplay(0);
 
-        this.el = el;
+        // Export public methods
         this.addEventListener = addEventListener;
         this.clear = clear;
         this.print = print;
         this.setDisplay = setDisplay;
+        this.hideCursor = hideCursor;
+        this.showCursor = showCursor;
+        this.getSize = getSize;
+        this.deleteBackwardChar = deleteBackwardChar;
     };
 
     sock.addEventListener('open', function () {
-        term.clear();
+        term.clear().showCursor();
     });
 
     sock.addEventListener('message', function (event) {
