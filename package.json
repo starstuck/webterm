@@ -1,0 +1,22 @@
+{
+  "name": "webterm",
+  "version": "0.1.0",
+  "description": "Touch friendly browser based terminal emulator",
+  "repository": "https://github.com/szarsti/webterm.git",
+  "keywords": [
+    "terminal"
+  ],
+  "author": "Tomasz Szarstuk <szarsti@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "express": "~3.3.5",
+    "ws": "~0.4.28",
+    "pty.js": "~0.2.3"
+  },
+  "scripts": {
+    "test": "echo \"Error: no tests yet\" && exit 1"
+  },
+  "dependencies": {
+    "requirejs": "~2.1.8"
+  }
+}

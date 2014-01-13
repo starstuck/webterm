@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>WebTerm</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="term.css" />
+    <style>
+        html, body, .term { margin: 0; padding: 0; }
+        html, body { height: 100%; }
+    </style>
+  </head>
+  <body>
+    <pre id="webterm" class="term" tabindex="0">Connecting ...</pre>
+    <script src="node_modules/requirejs/require.js"></script>
+    <script>
+        require.config({
+            baseUrl: './lib'
+        });
+        require(['term'], function(Term) {
+            new Term('webterm', 'ws://' + location.host + '/');
+        });
+    </script>
+  </body>
+</html>

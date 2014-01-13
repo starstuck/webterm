@@ -1,17 +1,35 @@
-/*global require, exports */
+/*global require, exports, process */
 
-var spawn = require('child_process').spawn,
+var http = require('http'),
+    spawn = require('child_process').spawn,
     pty = require('pty.js'),
     ws = require('ws'),
+    express = require('express'),
 
     cmd = 'bash',
     cmd_args = [],
     termName = 'xterm-color',
-    server = new ws.Server({port: 8080});
+    port = 8080,
+    app = express(),
+    webServer,
+    sockServer;
 
-server.on('connection', function (sock) {
+app
+    .use('/lib', express.static('lib'))
+    .use('/node_modules/requirejs', express.static('node_modules/requirejs'))
+    .get(/\/(index.html|term.css)/, function(req, res) {
+        res.sendfile('./' + req.params[0]);
+    })
+    .get('/', function(req, res) {
+        res.redirect('/index.html');
+    });
 
-    var term = pty.spawn(cmd, cmd_args, {
+webServer = http.createServer(app);
+sockServer = new ws.Server({server: webServer});
+
+sockServer.on('connection', function (sock) {
+
+    var shell = pty.spawn(cmd, cmd_args, {
         name: termName,
         cwd: process.env.HOME,
         env: process.env
@@ -19,19 +37,22 @@ server.on('connection', function (sock) {
 
     console.log('Connection opened');
     
-    term.on('data', function (chunk) {
+    shell.on('data', function (chunk) {
         sock.send(chunk.toString());
     });
 
     // TODO: term.resize
-
     sock.on('message', function (msg) {
-        term.write(msg);
+        shell.write(msg);
     });
 
     sock.on('close', function () {
         console.log('Connection closed');
-        term.end();
+        shell.end();
     });
 });
 
+if (require.main === module) {
+    webServer.listen(port);
+    console.log('Preview server running at http://localhost:' + port);
+}
